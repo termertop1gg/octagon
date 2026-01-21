@@ -42,7 +42,7 @@ npm install mysql2 node-telegram-bot-api dotenv
 npm install --save-dev nodemon
 ```
 
-3. Настройка Базы Данных
+### 3. Настройка Базы Данных
 Откройте PHPMyAdmin (обычно http://localhost/phpmyadmin).
 Создайте базу данных с именем ChatBotTests.
 Во вкладке SQL выполните этот запрос:
@@ -56,12 +56,12 @@ CREATE TABLE Storage (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 ```
-4. Настройка окружения
+### 4. Настройка окружения
 Создайте в корне проекта файл .env и вставьте туда токен вашего бота:
 ```bash
 TELEGRAM_TOKEN=ВАШ_ТОКЕН_ОТ_BOTFATHER
 ```
-5. Запуск бота
+### 5. Запуск бота
 ```bash
 node index.js
 ```
