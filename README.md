@@ -38,6 +38,8 @@
 Откройте терминал в папке проекта:
 ```bash
 npm install
+npm install mysql2 node-telegram-bot-api dotenv
+npm install --save-dev nodemon
 ```
 
 3. Настройка Базы Данных
