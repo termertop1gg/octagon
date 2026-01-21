@@ -38,7 +38,11 @@
 Откройте терминал в папке проекта:
 ```bash
 npm install
+```
+```bash
 npm install mysql2 node-telegram-bot-api dotenv
+```
+```bash
 npm install --save-dev nodemon
 ```
 
