@@ -1,12 +1,9 @@
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const mysql = require('mysql2');
+const cron = require('node-cron');
 
 const token = process.env.TELEGRAM_TOKEN;
-if (!token) {
-    console.error('Ошибка: Токен не найден в .env');
-    process.exit(1);
-}
 const bot = new TelegramBot(token, {polling: true});
 
 const connection = mysql.createConnection({
@@ -17,110 +14,64 @@ const connection = mysql.createConnection({
 });
 
 connection.connect(err => {
-    if (err) console.error('Ошибка БД: ' + err.stack);
-    else console.log('Успешное подключение к MySQL');
+    if (err) console.error('Ошибка БД: ' + err);
+    else console.log('Подключено к MySQL');
 });
 
 console.log('Бот запущен...');
 
+bot.on('message', (msg) => {
+    const userId = msg.from.id;
+    
+    const sql = "INSERT INTO Users (id, lastMessage) VALUES (?, NOW()) ON DUPLICATE KEY UPDATE lastMessage = NOW()";
+    
+    connection.query(sql, [userId], (err) => {
+        if (err) console.error("Ошибка обновления пользователя:", err);
+    });
+});
 
+cron.schedule('0 13 * * *', () => {
+    console.log('Запуск ежедневной проверки активности...');
+
+    const checkSql = "SELECT id FROM Users WHERE lastMessage < (NOW() - INTERVAL 2 DAY)";
+
+    connection.query(checkSql, (err, inactiveUsers) => {
+        if (err) return console.error("Ошибка поиска молчунов:", err);
+
+        if (inactiveUsers.length === 0) {
+            console.log("Нет неактивных пользователей.");
+            return;
+        }
+
+        console.log(`Найдено ${inactiveUsers.length} пользователей для рассылки.`);
+
+        connection.query('SELECT * FROM Items ORDER BY RAND() LIMIT 1', (err, items) => {
+            if (err || items.length === 0) return;
+
+            const item = items[0];
+            const message = `Давно тебя не было! Смотри, что у нас есть:\n\n(${item.id}) - ${item.name}: ${item.desc}`;
+
+            inactiveUsers.forEach(user => {
+                bot.sendMessage(user.id, message).catch(e => {
+                    console.error(`Не удалось отправить пользователю ${user.id}:`, e.message);
+                });
+            });
+        });
+    });
+}, {
+    timezone: "Europe/Moscow"
+});
+
+
+bot.onText(/\/start/, (msg) => {
+    bot.sendMessage(msg.chat.id, "Привет! Я запомнил тебя.");
+});
 
 bot.onText(/\/randomItem/, (msg) => {
-    const chatId = msg.chat.id;
-
     connection.query('SELECT * FROM Items ORDER BY RAND() LIMIT 1', (err, results) => {
-        if (err) {
-            bot.sendMessage(chatId, "Ошибка базы данных.");
-            return;
-        }
-        
-        if (results.length === 0) {
-            bot.sendMessage(chatId, "База данных пуста.");
-            return;
-        }
-
-        const item = results[0];
-        const response = `(${item.id}) - ${item.name}: ${item.desc}`;
-        bot.sendMessage(chatId, response);
-    });
-});
-
-bot.onText(/\/getItemByID (.+)/, (msg, match) => {
-    const chatId = msg.chat.id;
-    const id = match[1];
-
-    connection.query('SELECT * FROM Items WHERE id = ?', [id], (err, results) => {
-        if (err) {
-            bot.sendMessage(chatId, "Ошибка базы данных.");
-            return;
-        }
-
-        if (results.length === 0) {
-            bot.sendMessage(chatId, "Предмет с таким ID не найден.");
-        } else {
+        if (!err && results.length > 0) {
             const item = results[0];
-            const response = `(${item.id}) - ${item.name}: ${item.desc}`;
-            bot.sendMessage(chatId, response);
+            bot.sendMessage(msg.chat.id, `(${item.id}) - ${item.name}: ${item.desc}`);
         }
-    });
-});
-
-bot.onText(/\/deleteItem (.+)/, (msg, match) => {
-    const chatId = msg.chat.id;
-    const id = match[1];
-
-    connection.query('DELETE FROM Items WHERE id = ?', [id], (err, result) => {
-        if (err) {
-            bot.sendMessage(chatId, "Ошибка при удалении.");
-            return;
-        }
-
-        if (result.affectedRows > 0) {
-            bot.sendMessage(chatId, "Удачно");
-        } else {
-            bot.sendMessage(chatId, "Ошибка (предмет с таким ID не найден)");
-        }
-    });
-});
-
-bot.onText(/\/help/, (msg) => {
-    bot.sendMessage(msg.chat.id, `
-Доступные команды:
-/randomItem - Случайный предмет
-/getItemByID 1 - Получить предмет с ID 1
-/deleteItem 1 - Удалить предмет с ID 1
-!qr [текст] - qr код с текстом
-!webscr [ссылка] - скриншот сайта
-    `);
-});
-
-bot.onText(/^!qr (.+)/, (msg, match) => {
-    const chatId = msg.chat.id;
-    const text = match[1];
-
-    const url = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(text)}`;
-
-    bot.sendPhoto(chatId, url, {caption: "Вот твой QR-код!"});
-});
-
-bot.onText(/^!webscr (.+)/, (msg, match) => {
-    const chatId = msg.chat.id;
-    let targetUrl = match[1];
-
-    if (!targetUrl.startsWith('http')) {
-        targetUrl = 'http://' + targetUrl;
-    }
-
-    bot.sendMessage(chatId, "Запрос отправлен...");
-
-    const encodedUrl = encodeURIComponent(targetUrl);
-    
-    const uniqueParam = Date.now();
-    const screenshotUrl = `https://s0.wp.com/mshots/v1/${encodedUrl}?w=1280&v=${uniqueParam}`;
-
-    bot.sendPhoto(chatId, screenshotUrl, {
-        caption: `Скриншот: ${targetUrl}\n\n(Если вы видите логотип "Generating Preview" — значит сайт сложный. Просто отправьте команду еще раз через 10 секунд)`
-    }).catch((error) => {
-        bot.sendMessage(chatId, "Ошибка загрузки изображения.");
     });
 });
