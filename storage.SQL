@@ -1,0 +1,8 @@
+CREATE TABLE Storage (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    type VARCHAR(20) NOT NULL,
+    file_id TEXT,
+    caption TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
