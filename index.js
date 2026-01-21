@@ -89,5 +89,38 @@ bot.onText(/\/help/, (msg) => {
 /randomItem - Случайный предмет
 /getItemByID 1 - Получить предмет с ID 1
 /deleteItem 1 - Удалить предмет с ID 1
+!qr [текст] - qr код с текстом
+!webscr [ссылка] - скриншот сайта
     `);
+});
+
+bot.onText(/^!qr (.+)/, (msg, match) => {
+    const chatId = msg.chat.id;
+    const text = match[1];
+
+    const url = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(text)}`;
+
+    bot.sendPhoto(chatId, url, {caption: "Вот твой QR-код!"});
+});
+
+bot.onText(/^!webscr (.+)/, (msg, match) => {
+    const chatId = msg.chat.id;
+    let targetUrl = match[1];
+
+    if (!targetUrl.startsWith('http')) {
+        targetUrl = 'http://' + targetUrl;
+    }
+
+    bot.sendMessage(chatId, "Запрос отправлен...");
+
+    const encodedUrl = encodeURIComponent(targetUrl);
+    
+    const uniqueParam = Date.now();
+    const screenshotUrl = `https://s0.wp.com/mshots/v1/${encodedUrl}?w=1280&v=${uniqueParam}`;
+
+    bot.sendPhoto(chatId, screenshotUrl, {
+        caption: `Скриншот: ${targetUrl}\n\n(Если вы видите логотип "Generating Preview" — значит сайт сложный. Просто отправьте команду еще раз через 10 секунд)`
+    }).catch((error) => {
+        bot.sendMessage(chatId, "Ошибка загрузки изображения.");
+    });
 });
