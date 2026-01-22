@@ -5,7 +5,7 @@
 
 Интерфейс построен на **текстовых командах**, что позволяет быстро работать с большими списками файлов без ограничений инлайн-кнопок.
 
-![NodeJS](https://img.shields.io/badge/Node.js-v14+-green) ![MySQL](https://img.shields.io/badge/MySQL-Database-blue) ![Status](https://img.shields.io/badge/Status-v6.8_Stable-orange)
+![NodeJS](https://img.shields.io/badge/Node.js-v14+-green) ![MySQL](https://img.shields.io/badge/MySQL-Database-blue) ![Status](https://img.shields.io/badge/Status-v7.1_Stable-orange)
 
 ---
 
